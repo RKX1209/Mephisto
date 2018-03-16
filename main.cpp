@@ -38,7 +38,7 @@ struct Arg: public option::Arg
   }
 };
 
-enum  optionIndex { UNKNOWN, HELP, ENABLE_GDB, PORT, NSO, NRO, KIP, ENABLE_SOCKETS };
+enum  optionIndex { UNKNOWN, HELP, ENABLE_GDB, PORT, NSO, NRO, KIP, ENABLE_SOCKETS, ENABLE_TRACE };
 const option::Descriptor usage[] =
 {
 	{UNKNOWN, 0, "", "",Arg::None, "USAGE: ctu [options] <load-directory>\n\n"
@@ -50,6 +50,7 @@ const option::Descriptor usage[] =
 	{NRO, 0,"","load-nro",Arg::NonEmpty, "  --load-nro  \tLoad an NRO without load directory (entry point .text+0x80)"},
 	{KIP, 0,"","load-kip",Arg::NonEmpty, "  --load-kip  \tLoad a KIP without load directory"},
 	{ENABLE_SOCKETS, 0, "b","enable-sockets",Arg::None, "  -- enable-sockets, -b  \tEnable BSD socket passthrough." },
+        {ENABLE_TRACE, 0, "t","enable-trace",Arg::None, "  --enable-trace, -t  \tEnable Trace" },
 	{0,0,nullptr,nullptr,nullptr,nullptr}
 };
 
@@ -118,6 +119,17 @@ void runLisp(Ctu &ctu, const string &dir, shared_ptr<Atom> code) {
 	} else
 		LOG_ERROR(Main, "Unknown function in load script: '%s'", head->strVal.c_str());
 }
+FILE *traceOut = NULL;
+static void initTrace(Ctu &ctu, const char *ofile) {
+        if ((traceOut = fopen(ofile, "w")) == NULL) {
+                fprintf(stderr, "Can not open output file for trace\n");
+                exit(EXIT_FAILURE);
+        }
+}
+
+static void finTrace(Ctu &ctu) {
+        fclose (traceOut);
+}
 
 int main(int argc, char **argv) {
 	argc -= argc > 0;
@@ -170,16 +182,20 @@ int main(int argc, char **argv) {
 	} else {
 		ctu.socketsEnabled = false;
 	}
-	
+        if(options[ENABLE_TRACE].count()) {
+                initTrace (ctu, "unicorn_trace.json");
+                printf("trace enabled\n");
+        }
+        gptr start = 0x0;
 	if(options[NSO].count()) {
-		loadNso(ctu, options[NSO][0].arg, 0x7100000000);
-		ctu.execProgram(0x7100000000);
+		loadNso(ctu, options[NSO][0].arg, start);
+		ctu.execProgram(start);
 	} else if(options[NRO].count()) {
-		loadNro(ctu, options[NRO][0].arg, 0x7100000000);
-		ctu.execProgram(0x7100000000);
+		loadNro(ctu, options[NRO][0].arg, start);
+		ctu.execProgram(start + 0x80);
 	} else if(options[KIP].count()) {
-		loadKip(ctu, options[KIP][0].arg, 0x7100000000);
-		ctu.execProgram(0x7100000000);
+		loadKip(ctu, options[KIP][0].arg, start);
+		ctu.execProgram(start);
 	} else {
 		string dir = parse.nonOption(0);
 		auto lfn = dir + "/load.meph";
@@ -193,6 +209,8 @@ int main(int argc, char **argv) {
 		for(auto elem : atom->children)
 			runLisp(ctu, dir, elem);
 	}
-
+        if (traceOut) {
+                finTrace (ctu);
+        }
 	return 0;
 }

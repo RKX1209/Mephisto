@@ -7,15 +7,15 @@ Ctu::Ctu() : cpu(this), svc(this), ipc(this), tm(this), mmiohandler(this), bridg
 }
 
 void Ctu::execProgram(gptr ep) {
-	auto sp = 7 << 24;
-	auto ss = 8 * 1024 * 1024;
+        auto sp = 0x3000000;
+        auto ss = 0x1000000;
 
-	cpu.map(sp - ss, ss);
+	cpu.map(sp, ss);
 	mmiohandler.MMIOInitialize();
 	cpu.setMmio(&mmiohandler);
 
-	auto mainThread = tm.create(ep, sp);
-	mainThread->regs.X1 = mainThread->handle;
+	auto mainThread = tm.create(ep, sp + 0x100000);
+	//mainThread->regs.X1 = mainThread->handle;
 	mainThread->resume();
 
 	tm.start();

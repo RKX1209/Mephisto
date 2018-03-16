@@ -8,6 +8,88 @@ bool unmpdHook(uc_engine *uc, uc_mem_type type, gptr addr, uint32_t size, guint 
 	return ((Cpu *) user_data)->unmappedHook(type, addr, size, value);
 }
 
+extern FILE *traceOut;
+static void dumpReg (uc_engine *uc, Ctu *ctu) {
+        uint64_t reg[33];
+        uc_reg_read(uc, UC_ARM64_REG_X0, &reg[0]);
+        uc_reg_read(uc, UC_ARM64_REG_X1, &reg[1]);
+        uc_reg_read(uc, UC_ARM64_REG_X2, &reg[2]);
+        uc_reg_read(uc, UC_ARM64_REG_X3, &reg[3]);
+        uc_reg_read(uc, UC_ARM64_REG_X4, &reg[4]);
+        uc_reg_read(uc, UC_ARM64_REG_X5, &reg[5]);
+        uc_reg_read(uc, UC_ARM64_REG_X6, &reg[6]);
+        uc_reg_read(uc, UC_ARM64_REG_X7, &reg[7]);
+        uc_reg_read(uc, UC_ARM64_REG_X8, &reg[8]);
+        uc_reg_read(uc, UC_ARM64_REG_X9, &reg[9]);
+        uc_reg_read(uc, UC_ARM64_REG_X10, &reg[10]);
+        uc_reg_read(uc, UC_ARM64_REG_X11, &reg[11]);
+        uc_reg_read(uc, UC_ARM64_REG_X12, &reg[12]);
+        uc_reg_read(uc, UC_ARM64_REG_X13, &reg[13]);
+        uc_reg_read(uc, UC_ARM64_REG_X14, &reg[14]);
+        uc_reg_read(uc, UC_ARM64_REG_X15, &reg[15]);
+        uc_reg_read(uc, UC_ARM64_REG_X16, &reg[16]);
+        uc_reg_read(uc, UC_ARM64_REG_X17, &reg[17]);
+        uc_reg_read(uc, UC_ARM64_REG_X18, &reg[18]);
+        uc_reg_read(uc, UC_ARM64_REG_X19, &reg[19]);
+        uc_reg_read(uc, UC_ARM64_REG_X20, &reg[20]);
+        uc_reg_read(uc, UC_ARM64_REG_X21, &reg[21]);
+        uc_reg_read(uc, UC_ARM64_REG_X22, &reg[22]);
+        uc_reg_read(uc, UC_ARM64_REG_X23, &reg[23]);
+        uc_reg_read(uc, UC_ARM64_REG_X24, &reg[24]);
+        uc_reg_read(uc, UC_ARM64_REG_X25, &reg[25]);
+        uc_reg_read(uc, UC_ARM64_REG_X26, &reg[26]);
+        uc_reg_read(uc, UC_ARM64_REG_X27, &reg[27]);
+        uc_reg_read(uc, UC_ARM64_REG_X28, &reg[28]);
+        uc_reg_read(uc, UC_ARM64_REG_X29, &reg[29]);
+        uc_reg_read(uc, UC_ARM64_REG_X30, &reg[30]);
+        //uc_reg_read(uc, UC_ARM64_REG_XZR, &reg[31]);
+        reg[31] = 0x0;
+        uc_reg_read(uc, UC_ARM64_REG_SP, &reg[32]);
+        uc_reg_read(uc, UC_ARM64_REG_PC, &reg[33]);
+        int r;
+        for (r = 0; r <= 33; r++) {
+                char regc = 'X';
+                if (r == 30)
+                        regc = 'L';
+                if (r == 31)
+                        regc = 'S';
+                if (r == 32)
+                        regc = 'P';
+                if (reg[r]) {
+                        //printf ("\"%c%d\" : \"0x%016lx\"\n", regc, r, reg[r]);
+                }
+                fprintf (traceOut, "\"X%d\" : \"0x%016lx\",\n", r, reg[r]);
+        }
+        uint32_t nzcv;
+        uc_reg_read(uc, UC_ARM64_REG_NZCV, &nzcv);
+        fprintf (traceOut, "\"X%d\" : \"0x%016lx\"\n", r, nzcv);
+}
+
+static uint64_t counter;
+void dumpMachine (uc_engine *uc, Ctu *ctu) {
+        fprintf (traceOut, "%lu : {\n", counter++);
+        dumpReg (uc, ctu);
+        fprintf (traceOut, "},\n");
+}
+
+// callback for tracing instruction
+void traceIns (uc_engine *uc, uint64_t address, uint32_t size, void *user_data) {
+        auto ctu = (Ctu *) user_data;
+        static uint64_t counter = 0, estimate = 3400000;
+        if (traceOut) {
+                if (counter >= estimate) {
+                        dumpMachine (uc, ctu);
+                }
+                counter++;
+        }
+        uint32_t code = 0x0;
+        for (int i = 0; i < sizeof(code); i++) {
+                uint8_t byte;
+                uc_mem_read (uc, address + i, &byte, 1);
+                code |= (byte << (i * 8));
+        }
+        //printf("0x%lx: 0x%08x\n", address, code);
+}
 void mmioHook(uc_engine *uc, uc_mem_type type, gptr address, uint32_t size, gptr value, void *user_data) {
 	auto cpu = (Cpu *) user_data;
 	auto physicalAddress = cpu->mmioHandler->getPhysicalAddressFromVirtual(address);
@@ -16,7 +98,7 @@ void mmioHook(uc_engine *uc, uc_mem_type type, gptr address, uint32_t size, gptr
 	switch(type) {
 		case UC_MEM_READ:
 			LOG_DEBUG(Cpu, "MMIO Read at " ADDRFMT " size %x", physicalAddress, size);
-			
+
 			uint64_t ovalue;
 			if(mmio->read(physicalAddress, size, ovalue)) {
 				switch(size) {
@@ -34,7 +116,7 @@ void mmioHook(uc_engine *uc, uc_mem_type type, gptr address, uint32_t size, gptr
 						break;
 				}
 			}
-			
+
 			break;
 		case UC_MEM_WRITE:
 			LOG_DEBUG(Cpu, "MMIO Write at " ADDRFMT " size %x data " LONGFMT, physicalAddress, size, value);
@@ -81,7 +163,7 @@ Cpu::Cpu(Ctu *_ctu) : ctu(_ctu) {
 	uc_hook hookHandle;
 	CHECKED(uc_hook_add(uc, &hookHandle, UC_HOOK_INTR, (void *) intrHook, this, 0, -1));
 	CHECKED(uc_hook_add(uc, &hookHandle, UC_HOOK_MEM_INVALID, (void *) unmpdHook, this, 0, -1));
-
+        CHECKED(uc_hook_add(uc, &hookHandle, UC_HOOK_CODE, (void *) traceIns, this, 1, 0));
 	for(auto i = 0; i < 0x80; ++i)
 		svcHandlers[i] = nullptr;
 
