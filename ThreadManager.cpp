@@ -8,6 +8,7 @@ Thread::Thread(Ctu *_ctu, int _id) : ctu(_ctu), id(_id), started(false) {
 
 	auto tlsSize = 0x1000;
 	tlsBase = (1 << 24) + tlsSize * _id;
+        printf("New Thread map(TLS %d) [0x%lx, 0x%x]\n", _id, tlsBase, tlsSize);
 	ctu->cpu.map(tlsBase, tlsSize);
 }
 

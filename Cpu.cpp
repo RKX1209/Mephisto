@@ -75,9 +75,13 @@ void dumpMachine (uc_engine *uc, Ctu *ctu) {
 // callback for tracing instruction
 void traceIns (uc_engine *uc, uint64_t address, uint32_t size, void *user_data) {
         auto ctu = (Ctu *) user_data;
-        static uint64_t counter = 0, estimate = 3400000;
+        static uint64_t counter = 0;
+        //uint64_t estimate = 3413000, mx = 10000;
+        uint64_t estimate = 3485900, mx = 100000;
+        //uint64_t estimate = 0, mx = 3420000;
         if (traceOut) {
-                if (counter >= estimate) {
+                //if (counter >= estimate) {
+                if (counter >= estimate && counter <= estimate + mx) {
                         dumpMachine (uc, ctu);
                 }
                 counter++;
@@ -154,8 +158,8 @@ void memBpHook(uc_engine *uc, uc_mem_type type, uint64_t address, uint32_t size,
 Cpu::Cpu(Ctu *_ctu) : ctu(_ctu) {
 	CHECKED(uc_open(UC_ARCH_ARM64, UC_MODE_ARM, &uc));
 
-	CHECKED(uc_mem_map(uc, TERMADDR, 0x1000, UC_PROT_ALL));
-	guestptr<uint32_t>(TERMADDR) = 0xd40000e1; // svc 0x7 (ExitProcess)
+	//CHECKED(uc_mem_map(uc, TERMADDR, 0x1000, UC_PROT_ALL));
+	//guestptr<uint32_t>(TERMADDR) = 0xd40000e1; // svc 0x7 (ExitProcess)
 
 	auto fpv = 3 << 20;
 	CHECKED(uc_reg_write(uc, UC_ARM64_REG_CPACR_EL1, &fpv));
@@ -205,6 +209,7 @@ bool Cpu::map(gptr addr, guint size) {
 	memset(temp, 0, size);
 	writemem(addr, temp, size);
 	delete[] temp;
+        printf("Map 0x%lx, 0x%lx\n", addr, addr + size);
 	return true;
 }
 

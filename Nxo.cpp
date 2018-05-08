@@ -168,7 +168,8 @@ guint Nso::load(Ctu &ctu, gptr base, bool relocate) {
 	if(tsize & 0xFFF)
 		tsize = (tsize & ~0xFFF) + 0x1000;
 
-	ctu.cpu.map(base, tsize);
+	//ctu.cpu.map(base, tsize);
+        ctu.cpu.map(base, 0x1000000);
 
 	char *text = decompress(fp, hdr.textOff, hdr.rdataOff - hdr.textOff, hdr.textSize);
 	ctu.cpu.writemem(base + hdr.textLoc, text, hdr.textSize);
@@ -226,7 +227,7 @@ guint Nro::load(Ctu &ctu, gptr base, bool relocate) {
 	char *image = new char[hdr.fileSize];
 	fp.seekg(0);
 	fp.read(image, hdr.fileSize);
-	
+
 	if(relocate) {
 		// stupid tiny linker
 		ModuleHeader moduleHeader = *(ModuleHeader*) (image + hdr.moduleHeaderOff);
@@ -237,7 +238,7 @@ guint Nro::load(Ctu &ctu, gptr base, bool relocate) {
 		uint64_t relaEnt = 0;
 		uint64_t relaCount = 0;
 		bool foundRela = false;
-		
+
 		while(dynamic->d_tag > 0) {
 			switch(dynamic->d_tag) {
 			case 7: // DT_RELA
@@ -273,11 +274,11 @@ guint Nro::load(Ctu &ctu, gptr base, bool relocate) {
 		if(relaSize != relaCount * relaEnt) {
 			LOG_ERROR(TLD, "relaSize mismatch");
 		}
-		
+
 		Elf64_Rela *relaBase = (Elf64_Rela*) (image + relaOffset);
 		for(int i = 0; i < relaCount; i++) {
 			Elf64_Rela rela = relaBase[i];
-			
+
 			switch(rela.r_reloc_type) {
 			case 0x403: // R_AARCH64_RELATIVE
 				if(rela.r_symbol != 0) {
@@ -290,9 +291,9 @@ guint Nro::load(Ctu &ctu, gptr base, bool relocate) {
 			}
 		}
 	}
-        
+
 	ctu.cpu.writemem(base, image, hdr.fileSize);
 	delete[] image;
-        
+
 	return tsize;
 }

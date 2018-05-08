@@ -128,12 +128,12 @@ Svc::Svc(Ctu *_ctu) : ctu(_ctu) {
 tuple<guint, guint> Svc::SetHeapSize(guint size) {
 	LOG_DEBUG(Svc[0x01], "SetHeapSize 0x" LONGFMT, size);
 	if (ctu->heapsize < size) {
-		ctu->cpu.map(0xaa0000000 + ctu->heapsize, size - ctu->heapsize);
+		ctu->cpu.map(0x9000000 + ctu->heapsize, size - ctu->heapsize);
 	} else if (ctu->heapsize > size) {
-		ctu->cpu.unmap(0xaa0000000 + size, ctu->heapsize - size);
+		ctu->cpu.unmap(0x9000000 + size, ctu->heapsize - size);
 	}
 	ctu->heapsize = size;
-	return make_tuple(0, 0xaa0000000);
+	return make_tuple(0, 0x9000000);
 }
 
 guint Svc::SetMemoryAttribute(gptr addr, guint size, guint state0, guint state1) {
@@ -178,7 +178,7 @@ tuple<guint, guint> Svc::QueryMemory(gptr meminfo, gptr pageinfo, gptr addr) {
 			minfo.size = end - begin + 1;
 			minfo.memory_type = perm == -1 ? 0 : 3; // FREE or CODE
 			minfo.memory_attribute = 0;
-			if(addr >= 0xaa0000000 && addr <= 0xaa0000000 + ctu->heapsize) {
+			if(addr >= 0x9000000 && addr < 0x9000000 + ctu->heapsize) {
 				minfo.memory_type = 5; // HEAP
 			}
 			minfo.permission = 0;
@@ -525,7 +525,7 @@ tuple<guint, guint> Svc::GetInfo(guint id1, ghandle handle, guint id2) {
 	matchpair(1, 0, 0xFFFFFFFF00000000);
 	matchpair(2, 0, 0xbb0000000); // map region
 	matchpair(3, 0, 0x1000000000); // size
-	matchpair(4, 0, 0xaa0000000); // heap region
+	matchpair(4, 0, 0x9000000); // heap region
 	matchpair(5, 0, ctu->heapsize); // size
 	matchpair(6, 0, 0x400000);
 	matchpair(7, 0, 0x10000);

@@ -44,18 +44,18 @@ public:
 };
 
 Mmio::Mmio(Ctu *_ctu) {
-	MMIORegister(0x50000000, 0x24000, new MmioBase());
-	MMIORegister(0x54200000, 0x400000, new MmioBase());
-	MMIORegister(0x57000000, 0x1000000, new GpuMmio());
-	MMIORegister(0x58000000, 0x1000000, new GpuMmio());
-	MMIORegister(0x70000000, 0x1000, new ApbMmio());
-	MMIORegister(0x7000f800, 0x400, new FuseMmio());
-	MMIORegister(0x702ec000, 0x2000, new ApbMmio());
-	MMIORegister(0x70030000, 0x8000, new ApbMmio());
-	MMIORegister(0x700e3000, 0x100, new ApbMmio());
-	MMIORegister(0x702ef700, 0x40, new ApbMmio());
-	MMIORegister(0x702f9000, 0x1000, new ApbMmio());
-	
+	// MMIORegister(0x50000000, 0x24000, new MmioBase());
+	// MMIORegister(0x54200000, 0x400000, new MmioBase());
+	// MMIORegister(0x57000000, 0x1000000, new GpuMmio());
+	// MMIORegister(0x58000000, 0x1000000, new GpuMmio());
+	// MMIORegister(0x70000000, 0x1000, new ApbMmio());
+	// MMIORegister(0x7000f800, 0x400, new FuseMmio());
+	// MMIORegister(0x702ec000, 0x2000, new ApbMmio());
+	// MMIORegister(0x70030000, 0x8000, new ApbMmio());
+	// MMIORegister(0x700e3000, 0x100, new ApbMmio());
+	// MMIORegister(0x702ef700, 0x40, new ApbMmio());
+	// MMIORegister(0x702f9000, 0x1000, new ApbMmio());
+
 	//MMIORegister(0x70030000, 0x8000, new ApbMmio());
 	ctu = _ctu;
 }
@@ -73,11 +73,11 @@ void Mmio::MMIOInitialize() {
 		item.second->setOffset(mmioBaseSize);
 		mmioBaseSize += item.second->mmioSize;
 	}
-	if(mmioBaseSize & 0xFFF) 
+	if(mmioBaseSize & 0xFFF)
 		mmioBaseSize = (mmioBaseSize & ~0xFFF) + 0x1000;
 
-	LOG_DEBUG(Mmio, "Mapping 0x" ADDRFMT " size 0x%x", mmioBaseAddr, (uint) mmioBaseSize);
-	ctu->cpu.map(mmioBaseAddr, mmioBaseSize);
+	//LOG_DEBUG(Mmio, "Mapping 0x" ADDRFMT " size 0x%x", mmioBaseAddr, (uint) mmioBaseSize);
+	//ctu->cpu.map(mmioBaseAddr, mmioBaseSize);
 }
 
 gptr Mmio::getVirtualAddressFromAddr(gptr addr) {
